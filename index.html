@@ -301,6 +301,16 @@
                   <span class="font-medium text-green-600 font-mono">+ {{ formatNumber(result.bonus) }}</span>
                 </div>
 
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2" v-if="hasAllowance">
+                  <span class="text-slate-600">補助金額</span>
+                  <span class="font-medium text-emerald-600 font-mono">
+                    + {{ formatNumber(result.finalAllowance) }}
+                    <span class="text-xs text-slate-500 ml-1">
+                      ({{ formatNumber(result.totalAllowance) }} - {{ formatNumber(result.allowanceDeduction) }})
+                    </span>
+                  </span>
+                </div>
+
                 <div class="flex justify-between items-center text-red-600">
                   <span>請假扣薪 (Leave Ded.)</span>
                   <span class="font-mono">- {{ formatNumber(result.leaveDeduction) }}</span>
@@ -543,7 +553,7 @@
         }
 
         // 3. 主薪資計算
-        const result = computed(() => {
+                const result = computed(() => {
           const base = Number(baseSalary.value || 0);
           const hourlyWage = base / 30 / 8;
 
@@ -551,15 +561,15 @@
           let totalPersonalDeduction = 0;
           const leaveDeductionDetails = [];
 
-          // 請假扣薪
+          // --- 請假扣薪 (薪資部分) ---
           leaveRecords.value.forEach(record => {
             const hours = Number(record.hours || 0);
             if (record.type === 'sick') {
-              const deduction = hours * hourlyWage * 0.5;
+              const deduction = hours * hourlyWage * 0.5; // 病假半薪
               totalSickDeduction += deduction;
               leaveDeductionDetails.push(`病假 (${record.date}): -${Math.round(deduction)}`);
             } else if (record.type === 'personal') {
-              const deduction = hours * hourlyWage;
+              const deduction = hours * hourlyWage;       // 事假全薪扣
               totalPersonalDeduction += deduction;
               leaveDeductionDetails.push(`事假 (${record.date}): -${Math.round(deduction)}`);
             }
@@ -567,44 +577,70 @@
 
           const totalLeaveDeduction = Math.round(totalSickDeduction + totalPersonalDeduction);
 
-          // 補助扣除
+          // --- 補助扣除 (病假折半) ---
           let totalAllowanceDeduction = 0;
           const allowanceDeductionDetails = [];
 
           if (hasAllowance.value) {
             const dailyAllowance = calculateDailyAllowance();
 
-            const dailyLeaveMap = new Map();
+            // 依日期累積病假/事假時數
+            const dailyMap = new Map(); // date -> { sick: number, personal: number }
+
             leaveRecords.value.forEach(record => {
               if (record.type === 'sick' || record.type === 'personal') {
-                const current = dailyLeaveMap.get(record.date) || 0;
-                dailyLeaveMap.set(record.date, current + Number(record.hours || 0));
+                const hours = Number(record.hours || 0);
+                const current = dailyMap.get(record.date) || { sick: 0, personal: 0 };
+                if (record.type === 'sick') {
+                  current.sick += hours;
+                } else {
+                  current.personal += hours;
+                }
+                dailyMap.set(record.date, current);
               }
             });
 
-            dailyLeaveMap.forEach((hours, date) => {
+            // 規則：病假視為「折半時數」參與補助扣除
+            // effectiveHours = 事假時數 + 病假時數 / 2
+            // 若 effectiveHours >= 5 -> 全扣 dailyAllowance
+            // 否則 -> dailyAllowance * (effectiveHours / 8)
+            dailyMap.forEach(({ sick, personal }, date) => {
+              const sickHours = sick || 0;
+              const personalHours = personal || 0;
+              const effectiveHours = personalHours + sickHours / 2;
               let deduction = 0;
-              if (hours >= 5) {
+
+              if (effectiveHours >= 5) {
                 deduction = dailyAllowance;
-                allowanceDeductionDetails.push(`${date} (請假${hours}hr): 全扣 -${deduction}`);
+                allowanceDeductionDetails.push(
+                  `${date} (病${sickHours}hr, 事${personalHours}hr，有效${effectiveHours}hr): 全扣 -${deduction}`
+                );
               } else {
-                deduction = dailyAllowance * (hours / 8);
-                allowanceDeductionDetails.push(`${date} (請假${hours}hr): 比例 -${Math.round(deduction)}`);
+                deduction = dailyAllowance * (effectiveHours / 8);
+                allowanceDeductionDetails.push(
+                  `${date} (病${sickHours}hr, 事${personalHours}hr，有效${effectiveHours.toFixed(1)}hr): 比例 -${Math.round(deduction)}`
+                );
               }
+
               totalAllowanceDeduction += deduction;
             });
           }
 
           totalAllowanceDeduction = Math.round(totalAllowanceDeduction);
 
-          // 勞健保
+          // --- 勞健保 ---
           const insurance = lookupInsurance(base);
           const insuranceTotal = insurance.labor + insurance.health;
 
-          // 獎金
+          // --- 獎金 ---
           const bonus = hasBonus.value ? Number(bonusAmount.value || 0) : 0;
 
-          // 實領
+          // --- 補助金額資訊 ---
+          const totalAllowance = hasAllowance.value ? Number(monthlyAllowance.value || 0) : 0;
+          const finalAllowance = totalAllowance - totalAllowanceDeduction; // 例：1800 - 30 = 1770
+
+          // --- 實領薪資 ---
+          // 注意：原本邏輯是「底薪已含補助」，monthlyAllowance 只用來計算扣多少，不額外加進 Net
           const net = Math.round(base - totalLeaveDeduction - totalAllowanceDeduction - insuranceTotal + bonus);
 
           return {
@@ -618,9 +654,13 @@
             bonus,
             netSalary: net,
             allowanceDeductionDetails,
-            leaveDeductionDetails
+            leaveDeductionDetails,
+            // 新增：補助相關欄位
+            totalAllowance,
+            finalAllowance
           };
         });
+
 
         // 新增請假紀錄
         function addLeaveRecord() {
