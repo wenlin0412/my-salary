@@ -582,9 +582,11 @@
           const allowanceDeductionDetails = [];
 
           if (hasAllowance.value) {
-            const dailyAllowance = calculateDailyAllowance();
+            const totalAllowance = Number(monthlyAllowance.value || 0);
+            const dailyAllowance = totalAllowance / 30;     // 每日補助
+            const perHour = dailyAllowance / 5;             // 視為 5 小時為一整日
 
-            // 依日期累積病假/事假時數
+            // 按日期彙總病假/事假時數
             const dailyMap = new Map(); // date -> { sick: number, personal: number }
 
             leaveRecords.value.forEach(record => {
@@ -593,36 +595,55 @@
                 const current = dailyMap.get(record.date) || { sick: 0, personal: 0 };
                 if (record.type === 'sick') {
                   current.sick += hours;
-                } else {
+                } else if (record.type === 'personal') {
                   current.personal += hours;
                 }
                 dailyMap.set(record.date, current);
               }
             });
 
-            // 規則：病假視為「折半時數」參與補助扣除
-            // effectiveHours = 事假時數 + 病假時數 / 2
-            // 若 effectiveHours >= 5 -> 全扣 dailyAllowance
-            // 否則 -> dailyAllowance * (effectiveHours / 8)
+            // 依每一日計算補助扣除
             dailyMap.forEach(({ sick, personal }, date) => {
               const sickHours = sick || 0;
               const personalHours = personal || 0;
-              const effectiveHours = personalHours + sickHours / 2;
-              let deduction = 0;
 
-              if (effectiveHours >= 5) {
-                deduction = dailyAllowance;
+              // 事假
+              if (personalHours > 0) {
+                let personalBase = 0;
+                if (personalHours >= 5) {
+                  personalBase = dailyAllowance; // >= 5 小時全扣每日補助
+                } else {
+                  personalBase = perHour * personalHours; // 否則按每小時計
+                }
+                const personalDeduction = personalBase;
+                totalAllowanceDeduction += personalDeduction;
+
                 allowanceDeductionDetails.push(
-                  `${date} (病${sickHours}hr, 事${personalHours}hr，有效${effectiveHours}hr): 全扣 -${deduction}`
-                );
-              } else {
-                deduction = dailyAllowance * (effectiveHours / 8);
-                allowanceDeductionDetails.push(
-                  `${date} (病${sickHours}hr, 事${personalHours}hr，有效${effectiveHours.toFixed(1)}hr): 比例 -${Math.round(deduction)}`
+                  `${date} 事假${personalHours}hr: ` +
+                  (personalHours >= 5
+                    ? `全扣 -${Math.round(personalDeduction)}`
+                    : `比例 -${Math.round(personalDeduction)} (單位約 ${Math.round(perHour)}/hr)`)
                 );
               }
 
-              totalAllowanceDeduction += deduction;
+              // 病假（以事假計算出的金額再除以 2）
+              if (sickHours > 0) {
+                let sickBase = 0;
+                if (sickHours >= 5) {
+                  sickBase = dailyAllowance;        // 先當作事假全扣
+                } else {
+                  sickBase = perHour * sickHours;   // 先當作事假比例扣
+                }
+                const sickDeduction = sickBase / 2;  // 病假：事假金額再除以 2
+                totalAllowanceDeduction += sickDeduction;
+
+                allowanceDeductionDetails.push(
+                  `${date} 病假${sickHours}hr: ` +
+                  (sickHours >= 5
+                    ? `全扣(半額) -${Math.round(sickDeduction)}`
+                    : `比例(半額) -${Math.round(sickDeduction)}`)
+                );
+              }
             });
           }
 
