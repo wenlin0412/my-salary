@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>月薪制薪資計算系統 (2025年版)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-50 font-sans text-slate-800 p-4 md:p-8">
+  <div id="app">
+    <div class="max-w-5xl mx-auto space-y-6">
+
+      <!-- Header -->
+      <header class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-600 flex justify-between items-center">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <!-- Icon: Calculator -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 class="text-blue-600">
+              <rect width="16" height="20" x="4" y="2" rx="2"/>
+              <line x1="8" x2="16" y1="6" y2="6"/>
+              <line x1="16" x2="16" y1="14" y2="18"/>
+              <path d="M16 10h.01"/>
+              <path d="M12 10h.01"/>
+              <path d="M8 10h.01"/>
+              <path d="M12 14h.01"/>
+              <path d="M8 14h.01"/>
+              <path d="M12 18h.01"/>
+              <path d="M8 18h.01"/>
+            </svg>
+            月薪制薪資計算系統 (2025年版)
+          </h1>
+          <p class="text-slate-500 mt-1 text-sm">已更新民國114年勞健保級距 | 自動計算勞健保 | 特休管理</p>
+        </div>
+        <div class="text-right hidden md:block">
+          <div class="text-sm text-slate-400">目前薪資月份</div>
+          <div class="font-mono font-bold text-lg text-blue-600">{{ salaryMonth }}</div>
+        </div>
+      </header>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left Column: Settings & Inputs -->
+        <div class="lg:col-span-2 space-y-6">
+
+          <!-- 1. 基本薪資設定 -->
+          <section class="bg-white rounded-xl shadow-sm p-6">
+            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 border-b pb-2">
+              <!-- Icon: Banknote -->
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                   class="text-emerald-600">
+                <rect width="20" height="12" x="2" y="6" rx="2"/>
+                <circle cx="12" cy="12" r="2"/>
+                <path d="M6 12h.01M18 12h.01"/>
+              </svg>
+              基本薪資與補助
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-sm font-medium text-slate-600">薪資月份</label>
+                <input type="month"
+                       v-model="salaryMonth"
+                       class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+              </div>
+              <div class="space-y-1">
+                <label class="text-sm font-medium text-slate-600">月薪 (Base Salary)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2 text-slate-400">$</span>
+                  <input type="number"
+                         v-model.number="baseSalary"
+                         class="w-full pl-7 border-slate-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+                </div>
+                <div class="text-xs text-slate-400 mt-1">2025年基本工資: 28,590 元</div>
+              </div>
+
+              <!-- 獎金設定 -->
+              <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" id="hasBonus"
+                         v-model="hasBonus"
+                         class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4">
+                  <label for="hasBonus" class="text-sm font-medium">是否有獎金</label>
+                </div>
+                <div v-if="hasBonus" class="space-y-1">
+                  <label class="text-sm font-medium text-slate-600">獎金金額</label>
+                  <input type="number"
+                         v-model.number="bonusAmount"
+                         class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+                </div>
+              </div>
+
+              <!-- 補助設定 -->
+              <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" id="hasAllowance"
+                         v-model="hasAllowance"
+                         class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4">
+                  <label for="hasAllowance" class="text-sm font-medium">是否有每月補助 (如伙食津貼)</label>
+                </div>
+                <div v-if="hasAllowance" class="space-y-1">
+                  <label class="text-sm font-medium text-slate-600">月補助總額</label>
+                  <input type="number"
+                         v-model.number="monthlyAllowance"
+                         class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+                  <p class="text-xs text-slate-500">
+                    每日補助: {{ formatNumber(calculateDailyAllowance()) }} 元 (以30天計)
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 2. 特休設定 -->
+          <section class="bg-white rounded-xl shadow-sm p-6">
+            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 border-b pb-2">
+              <!-- Icon: Calendar -->
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                   class="text-orange-500">
+                <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                <line x1="16" x2="16" y1="2" y2="6"/>
+                <line x1="8" x2="8" y1="2" y2="6"/>
+                <line x1="3" x2="21" y1="10" y2="10"/>
+              </svg>
+              特休權益設定
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="space-y-1">
+                <label class="text-sm font-medium text-slate-600">特休起算日</label>
+                <input type="date"
+                       v-model="annualLeaveStartDate"
+                       class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+              </div>
+              <div class="space-y-1">
+                <label class="text-sm font-medium text-slate-600">年度特休總天數</label>
+                <input type="number" step="0.5"
+                       v-model.number="annualLeaveDays"
+                       class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+              </div>
+              <div class="flex items-end pb-2">
+                <div class="text-sm text-slate-600 bg-orange-50 px-3 py-1 rounded-full border border-orange-100">
+                  總時數: <span class="font-bold text-orange-700">{{ annualLeaveStatus.totalHours }}</span> 小時
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 3. 請假紀錄管理 -->
+          <section class="bg-white rounded-xl shadow-sm p-6">
+            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 border-b pb-2">
+              <!-- Icon: AlertCircle -->
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                   class="text-red-500">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" x2="12" y1="8" y2="12"/>
+                <line x1="12" x2="12.01" y1="16" y2="16"/>
+              </svg>
+              請假紀錄 (最小單位: 1小時)
+            </h2>
+
+            <!-- 新增請假表單 -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 items-end bg-slate-50 p-4 rounded-lg border border-slate-200">
+              <div class="space-y-1">
+                <label class="text-xs font-medium text-slate-500">日期</label>
+                <input type="date"
+                       v-model="newLeaveDate"
+                       class="w-full border-slate-300 rounded shadow-sm text-sm p-2 border">
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs font-medium text-slate-500">假別</label>
+                <select v-model="newLeaveType"
+                        class="w-full border-slate-300 rounded shadow-sm text-sm p-2 border">
+                  <option value="sick">病假 (半薪)</option>
+                  <option value="personal">事假 (無薪)</option>
+                  <option value="annual">特休 (有薪)</option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs font-medium text-slate-500">時數 (整數)</label>
+                <input type="number"
+                       v-model.number="newLeaveHours"
+                       min="1" max="8"
+                       class="w-full border-slate-300 rounded shadow-sm text-sm p-2 border">
+              </div>
+              <button @click="addLeaveRecord"
+                      class="bg-blue-600 hover:bg-blue-700 text-white rounded shadow-sm py-2 px-4 text-sm font-medium flex items-center justify-center gap-1 transition-colors">
+                <!-- Icon: PlusCircle -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" x2="12" y1="8" y2="16"/>
+                  <line x1="8" x2="16" y1="12" y2="12"/>
+                </svg>
+                加入
+              </button>
+            </div>
+
+            <!-- 錯誤訊息 -->
+            <div v-if="errorMessage"
+                 class="bg-red-50 text-red-600 p-3 rounded-md text-sm mb-4 border border-red-100 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" x2="12" y1="8" y2="12"/>
+                <line x1="12" x2="12.01" y1="16" y2="16"/>
+              </svg>
+              {{ errorMessage }}
+            </div>
+
+            <!-- 列表 -->
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">日期</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">假別</th>
+                    <th class="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">時數</th>
+                    <th class="px-3 py-2 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-200">
+                  <tr v-for="record in leaveRecords" :key="record.id" class="hover:bg-slate-50">
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-slate-700">{{ record.date }}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm">
+                      <span
+                        :class="[
+                          'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
+                          record.type === 'sick' ? 'bg-yellow-100 text-yellow-800' : '',
+                          record.type === 'personal' ? 'bg-red-100 text-red-800' : '',
+                          record.type === 'annual' ? 'bg-green-100 text-green-800' : ''
+                        ]"
+                      >
+                        {{ getLeaveTypeName(record.type) }}
+                      </span>
+                    </td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-slate-700">{{ record.hours }} 小時</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
+                      <button @click="removeLeaveRecord(record.id)" class="text-red-600 hover:text-red-900">
+                        <!-- Icon: Trash2 -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                             viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M3 6h18"/>
+                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                          <line x1="10" x2="10" y1="11" y2="17"/>
+                          <line x1="14" x2="14" y1="11" y2="17"/>
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr v-if="leaveRecords.length === 0">
+                    <td colspan="4" class="px-3 py-4 text-center text-slate-400 text-sm italic">尚無請假紀錄</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- Right Column: Results -->
+        <div class="lg:col-span-1 space-y-6">
+
+          <!-- 結果卡片 -->
+          <div class="bg-white rounded-xl shadow-lg border border-slate-200 sticky top-6 overflow-hidden">
+            <div class="bg-slate-800 p-4 text-white">
+              <h3 class="font-semibold text-lg flex items-center gap-2">
+                <!-- Icon: CheckCircle2 -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     class="text-green-400">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+                計算結果
+              </h3>
+            </div>
+
+            <div class="p-6 space-y-6">
+              <!-- 實領薪資 -->
+              <div class="text-center p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div class="text-sm text-blue-600 font-medium mb-1">本月實領薪資 (Net Salary)</div>
+                <div class="text-4xl font-bold text-blue-800 font-mono tracking-tight">
+                  $ {{ formatNumber(result.netSalary) }}
+                </div>
+              </div>
+
+              <!-- 薪資明細 -->
+              <div class="space-y-3 text-sm">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                  <span class="text-slate-600">本薪 (Base)</span>
+                  <span class="font-medium font-mono">+ {{ formatNumber(result.baseSalary) }}</span>
+                </div>
+
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2" v-if="hasBonus">
+                  <span class="text-slate-600">獎金 (Bonus)</span>
+                  <span class="font-medium text-green-600 font-mono">+ {{ formatNumber(result.bonus) }}</span>
+                </div>
+
+                <div class="flex justify-between items-center text-red-600">
+                  <span>請假扣薪 (Leave Ded.)</span>
+                  <span class="font-mono">- {{ formatNumber(result.leaveDeduction) }}</span>
+                </div>
+                <div class="pl-4 text-xs text-slate-400 space-y-1 mb-2">
+                  <div v-for="(detail, idx) in result.leaveDeductionDetails" :key="'ld-' + idx">
+                    {{ detail }}
+                  </div>
+                </div>
+
+                <div class="flex justify-between items-center text-red-600" v-if="hasAllowance">
+                  <span>補助費扣除 (Allow. Ded.)</span>
+                  <span class="font-mono">- {{ formatNumber(result.allowanceDeduction) }}</span>
+                </div>
+                <div class="pl-4 text-xs text-slate-400 space-y-1 mb-2"
+                     v-if="hasAllowance && result.allowanceDeduction > 0">
+                  <div v-for="(detail, idx) in result.allowanceDeductionDetails" :key="'ad-' + idx">
+                    {{ detail }}
+                  </div>
+                </div>
+
+                <div class="flex justify-between items-center text-red-600">
+                  <span>勞健保自付 (Ins.)</span>
+                  <span class="font-mono">- {{ formatNumber(result.insuranceSelfPay) }}</span>
+                </div>
+                <div class="pl-4 text-xs text-slate-400">
+                  <div>勞保 (2025新制): {{ formatNumber(result.laborInsurance) }}</div>
+                  <div>健保 (2025新制): {{ formatNumber(result.healthInsurance) }}</div>
+                </div>
+              </div>
+
+              <!-- 特休狀態 -->
+              <div class="pt-4 border-t border-slate-200">
+                <h4 class="font-medium text-slate-700 mb-3 flex items-center gap-2">
+                  <!-- Icon: Calendar (Small) -->
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                       viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                       class="text-slate-500">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                    <line x1="16" x2="16" y1="2" y2="6"/>
+                    <line x1="8" x2="8" y1="2" y2="6"/>
+                    <line x1="3" x2="21" y1="10" y2="10"/>
+                  </svg>
+                  特休使用狀態
+                </h4>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                  <div class="bg-slate-50 p-2 rounded border border-slate-100">
+                    <div class="text-xs text-slate-500">總時數</div>
+                    <div class="font-bold text-slate-700">{{ annualLeaveStatus.totalHours }}</div>
+                  </div>
+                  <div class="bg-slate-50 p-2 rounded border border-slate-100">
+                    <div class="text-xs text-slate-500">已使用</div>
+                    <div class="font-bold text-orange-600">{{ annualLeaveStatus.usedHours }}</div>
+                  </div>
+                  <div class="bg-blue-50 p-2 rounded border border-blue-100">
+                    <div class="text-xs text-blue-600">剩餘</div>
+                    <div class="font-bold text-blue-700">{{ annualLeaveStatus.remainingHours }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 參考資訊 -->
+              <div class="text-xs text-slate-400 mt-4 pt-2 border-t text-center">
+                <div>時薪基準: {{ formatDecimal(result.hourlyWage) }} 元</div>
+                <div>每日補助: {{ hasAllowance ? formatNumber(calculateDailyAllowance()) : 0 }} 元</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script>
+    const { createApp, ref, computed } = Vue;
+
+    // 2025 勞健保級距表 (與原本 Angular 程式相同)
+    const INSURANCE_TABLE = [
+      { limit: 11100, labor: 277, health: 172 },
+      { limit: 12540, labor: 313, health: 194 },
+      { limit: 13500, labor: 337, health: 209 },
+      { limit: 15840, labor: 396, health: 245 },
+      { limit: 16500, labor: 412, health: 255 },
+      { limit: 17280, labor: 432, health: 268 },
+      { limit: 17880, labor: 447, health: 277 },
+      { limit: 19047, labor: 476, health: 295 },
+      { limit: 20008, labor: 500, health: 310 },
+      { limit: 21009, labor: 525, health: 325 },
+      { limit: 22000, labor: 550, health: 341 },
+      { limit: 23100, labor: 577, health: 358 },
+      { limit: 24000, labor: 600, health: 372 },
+      { limit: 25250, labor: 631, health: 391 },
+      { limit: 26400, labor: 660, health: 409 },
+      { limit: 27600, labor: 690, health: 428 },
+      { limit: 28590, labor: 715, health: 443 },
+      { limit: 28800, labor: 720, health: 447 },
+      { limit: 30300, labor: 758, health: 470 },
+      { limit: 31800, labor: 795, health: 493 },
+      { limit: 33300, labor: 833, health: 516 },
+      { limit: 34800, labor: 870, health: 540 },
+      { limit: 36300, labor: 908, health: 563 },
+      { limit: 38200, labor: 955, health: 592 },
+      { limit: 40100, labor: 1002, health: 622 },
+      { limit: 42000, labor: 1050, health: 651 },
+      { limit: 43900, labor: 1098, health: 681 },
+      { limit: 45800, labor: 1145, health: 710 },
+      { limit: 48200, labor: 1145, health: 748 },
+      { limit: 50600, labor: 1145, health: 785 },
+      { limit: 53000, labor: 1145, health: 822 },
+      { limit: 55400, labor: 1145, health: 859 },
+      { limit: 57800, labor: 1145, health: 896 },
+      { limit: 60800, labor: 1145, health: 943 },
+      { limit: 63800, labor: 1145, health: 990 },
+      { limit: 66800, labor: 1145, health: 1036 },
+      { limit: 69800, labor: 1145, health: 1083 },
+      { limit: 72800, labor: 1145, health: 1129 },
+      { limit: 76500, labor: 1145, health: 1187 },
+      { limit: 80200, labor: 1145, health: 1244 },
+      { limit: 83900, labor: 1145, health: 1301 },
+      { limit: 87600, labor: 1145, health: 1359 },
+      { limit: 92100, labor: 1145, health: 1428 },
+      { limit: 96600, labor: 1145, health: 1498 },
+      { limit: 101100, labor: 1145, health: 1568 },
+      { limit: 105600, labor: 1145, health: 1638 },
+      { limit: 110100, labor: 1145, health: 1708 },
+      { limit: 115500, labor: 1145, health: 1791 },
+      { limit: 120900, labor: 1145, health: 1875 },
+      { limit: 126300, labor: 1145, health: 1959 },
+      { limit: 131700, labor: 1145, health: 2043 },
+      { limit: 137100, labor: 1145, health: 2126 },
+      { limit: 142500, labor: 1145, health: 2210 },
+      { limit: 147900, labor: 1145, health: 2294 },
+      { limit: 150000, labor: 1145, health: 2327 },
+      { limit: 156400, labor: 1145, health: 2426 },
+      { limit: 162800, labor: 1145, health: 2525 },
+      { limit: 169200, labor: 1145, health: 2624 },
+      { limit: 175600, labor: 1145, health: 2724 },
+      { limit: 182000, labor: 1145, health: 2823 },
+      { limit: 189500, labor: 1145, health: 2939 },
+      { limit: 197000, labor: 1145, health: 3055 },
+      { limit: 204500, labor: 1145, health: 3172 },
+      { limit: 212000, labor: 1145, health: 3288 },
+      { limit: 219500, labor: 1145, health: 3404 },
+      { limit: 228200, labor: 1145, health: 3539 },
+      { limit: 236900, labor: 1145, health: 3674 },
+      { limit: 245600, labor: 1145, health: 3809 },
+      { limit: 254300, labor: 1145, health: 3944 },
+      { limit: 263000, labor: 1145, health: 4079 },
+      { limit: 273000, labor: 1145, health: 4234 },
+      { limit: 283000, labor: 1145, health: 4389 },
+      { limit: 293000, labor: 1145, health: 4544 },
+      { limit: 303000, labor: 1145, health: 4700 },
+      { limit: 313000, labor: 1145, health: 4855 },
+      { limit: 9999999, labor: 1145, health: 4855 }
+    ];
+
+    createApp({
+      setup() {
+        // --- 狀態 ---
+        const salaryMonth = ref(new Date().toISOString().slice(0, 7));
+        const baseSalary = ref(36000);
+        const hasBonus = ref(false);
+        const bonusAmount = ref(0);
+        const hasAllowance = ref(false);
+        const monthlyAllowance = ref(1800);
+
+        const annualLeaveStartDate = ref(new Date().toISOString().slice(0, 10));
+        const annualLeaveDays = ref(7);
+
+        const leaveRecords = ref([]);
+
+        const newLeaveDate = ref(new Date().toISOString().slice(0, 10));
+        const newLeaveType = ref('sick'); // 'sick' | 'personal' | 'annual'
+        const newLeaveHours = ref(1);
+        const errorMessage = ref('');
+
+        // --- Helper: 數字格式化 ---
+        function formatNumber(value) {
+          const num = Number(value || 0);
+          return num.toLocaleString('zh-TW', {
+            maximumFractionDigits: 0
+          });
+        }
+
+        function formatDecimal(value) {
+          const num = Number(value || 0);
+          return num.toLocaleString('zh-TW', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+        }
+
+        // 1. 計算每日補助
+        function calculateDailyAllowance() {
+          if (!hasAllowance.value) return 0;
+          return Math.round((monthlyAllowance.value || 0) / 30);
+        }
+
+        // 2. 特休狀態
+        const annualLeaveStatus = computed(() => {
+          const days = Number(annualLeaveDays.value || 0);
+          const totalHours = Math.round(days * 8);
+
+          const usedHours = leaveRecords.value
+            .filter(r => r.type === 'annual')
+            .reduce((sum, r) => sum + Number(r.hours || 0), 0);
+
+          return {
+            totalDays: days,
+            totalHours,
+            usedHours,
+            remainingHours: Math.max(0, totalHours - usedHours)
+          };
+        });
+
+        // 勞健保查表
+        function lookupInsurance(salary) {
+          const s = Number(salary || 0);
+          const tier = INSURANCE_TABLE.find(t => t.limit >= s);
+          if (tier) {
+            return { labor: tier.labor, health: tier.health };
+          }
+          const maxTier = INSURANCE_TABLE[INSURANCE_TABLE.length - 1];
+          return { labor: maxTier.labor, health: maxTier.health };
+        }
+
+        // 假別名稱
+        function getLeaveTypeName(type) {
+          switch (type) {
+            case 'sick': return '病假';
+            case 'personal': return '事假';
+            case 'annual': return '特休';
+            default: return type;
+          }
+        }
+
+        // 3. 主薪資計算
+        const result = computed(() => {
+          const base = Number(baseSalary.value || 0);
+          const hourlyWage = base / 30 / 8;
+
+          let totalSickDeduction = 0;
+          let totalPersonalDeduction = 0;
+          const leaveDeductionDetails = [];
+
+          // 請假扣薪
+          leaveRecords.value.forEach(record => {
+            const hours = Number(record.hours || 0);
+            if (record.type === 'sick') {
+              const deduction = hours * hourlyWage * 0.5;
+              totalSickDeduction += deduction;
+              leaveDeductionDetails.push(`病假 (${record.date}): -${Math.round(deduction)}`);
+            } else if (record.type === 'personal') {
+              const deduction = hours * hourlyWage;
+              totalPersonalDeduction += deduction;
+              leaveDeductionDetails.push(`事假 (${record.date}): -${Math.round(deduction)}`);
+            }
+          });
+
+          const totalLeaveDeduction = Math.round(totalSickDeduction + totalPersonalDeduction);
+
+          // 補助扣除
+          let totalAllowanceDeduction = 0;
+          const allowanceDeductionDetails = [];
+
+          if (hasAllowance.value) {
+            const dailyAllowance = calculateDailyAllowance();
+
+            const dailyLeaveMap = new Map();
+            leaveRecords.value.forEach(record => {
+              if (record.type === 'sick' || record.type === 'personal') {
+                const current = dailyLeaveMap.get(record.date) || 0;
+                dailyLeaveMap.set(record.date, current + Number(record.hours || 0));
+              }
+            });
+
+            dailyLeaveMap.forEach((hours, date) => {
+              let deduction = 0;
+              if (hours >= 5) {
+                deduction = dailyAllowance;
+                allowanceDeductionDetails.push(`${date} (請假${hours}hr): 全扣 -${deduction}`);
+              } else {
+                deduction = dailyAllowance * (hours / 8);
+                allowanceDeductionDetails.push(`${date} (請假${hours}hr): 比例 -${Math.round(deduction)}`);
+              }
+              totalAllowanceDeduction += deduction;
+            });
+          }
+
+          totalAllowanceDeduction = Math.round(totalAllowanceDeduction);
+
+          // 勞健保
+          const insurance = lookupInsurance(base);
+          const insuranceTotal = insurance.labor + insurance.health;
+
+          // 獎金
+          const bonus = hasBonus.value ? Number(bonusAmount.value || 0) : 0;
+
+          // 實領
+          const net = Math.round(base - totalLeaveDeduction - totalAllowanceDeduction - insuranceTotal + bonus);
+
+          return {
+            baseSalary: base,
+            hourlyWage,
+            leaveDeduction: totalLeaveDeduction,
+            allowanceDeduction: totalAllowanceDeduction,
+            insuranceSelfPay: insuranceTotal,
+            laborInsurance: insurance.labor,
+            healthInsurance: insurance.health,
+            bonus,
+            netSalary: net,
+            allowanceDeductionDetails,
+            leaveDeductionDetails
+          };
+        });
+
+        // 新增請假紀錄
+        function addLeaveRecord() {
+          errorMessage.value = '';
+
+          if (!newLeaveDate.value || newLeaveHours.value <= 0) {
+            errorMessage.value = '請輸入有效的日期與時數';
+            return;
+          }
+
+          if (!Number.isInteger(newLeaveHours.value)) {
+            errorMessage.value = '時數必須為整數';
+            return;
+          }
+
+          const existingHours = leaveRecords.value
+            .filter(r => r.date === newLeaveDate.value)
+            .reduce((sum, r) => sum + Number(r.hours || 0), 0);
+
+          if (existingHours + newLeaveHours.value > 8) {
+            errorMessage.value =
+              `該日 (${newLeaveDate.value}) 總請假時數不可超過 8 小時 (已累積: ${existingHours})`;
+            return;
+          }
+
+          const newRecord = {
+            id: Date.now().toString(),
+            date: newLeaveDate.value,
+            type: newLeaveType.value,
+            hours: newLeaveHours.value
+          };
+
+          leaveRecords.value = [...leaveRecords.value, newRecord]
+            .sort((a, b) => a.date.localeCompare(b.date));
+        }
+
+        // 刪除請假紀錄
+        function removeLeaveRecord(id) {
+          leaveRecords.value = leaveRecords.value.filter(r => r.id !== id);
+        }
+
+        return {
+          salaryMonth,
+          baseSalary,
+          hasBonus,
+          bonusAmount,
+          hasAllowance,
+          monthlyAllowance,
+          annualLeaveStartDate,
+          annualLeaveDays,
+          leaveRecords,
+          newLeaveDate,
+          newLeaveType,
+          newLeaveHours,
+          errorMessage,
+          calculateDailyAllowance,
+          annualLeaveStatus,
+          result,
+          getLeaveTypeName,
+          addLeaveRecord,
+          removeLeaveRecord,
+          formatNumber,
+          formatDecimal
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
