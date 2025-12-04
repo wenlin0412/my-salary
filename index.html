@@ -553,7 +553,7 @@
         }
 
         // 3. 主薪資計算
-                const result = computed(() => {
+          const result = computed(() => {
           const base = Number(baseSalary.value || 0);
           const hourlyWage = base / 30 / 8;
 
@@ -641,7 +641,7 @@
 
           // --- 實領薪資 ---
           // 注意：原本邏輯是「底薪已含補助」，monthlyAllowance 只用來計算扣多少，不額外加進 Net
-          const net = Math.round(base - totalLeaveDeduction - totalAllowanceDeduction - insuranceTotal + bonus);
+          const net = Math.round(base - totalLeaveDeduction - totalAllowanceDeduction - insuranceTotal + bonus + finalAllowance);
 
           return {
             baseSalary: base,
