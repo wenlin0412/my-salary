@@ -305,9 +305,9 @@
                   <span class="text-slate-600">補助金額</span>
                   <span class="font-medium text-emerald-600 font-mono">
                     + {{ formatNumber(result.finalAllowance) }}
-                    <span class="text-xs text-slate-500 ml-1">
+                    <!--<span class="text-xs text-slate-500 ml-1">
                       ({{ formatNumber(result.totalAllowance) }} - {{ formatNumber(result.allowanceDeduction) }})
-                    </span>
+                    </span>-->
                   </span>
                 </div>
 
@@ -641,7 +641,7 @@
 
           // --- 實領薪資 ---
           // 注意：原本邏輯是「底薪已含補助」，monthlyAllowance 只用來計算扣多少，不額外加進 Net
-          const net = Math.round(base - totalLeaveDeduction - totalAllowanceDeduction - insuranceTotal + bonus + finalAllowance);
+          const net = Math.round(base - totalLeaveDeduction - totalAllowanceDeduction - insuranceTotal + bonus + totalAllowance);
 
           return {
             baseSalary: base,
