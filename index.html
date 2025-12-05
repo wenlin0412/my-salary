@@ -584,7 +584,7 @@
           if (hasAllowance.value) {
             const totalAllowance = Number(monthlyAllowance.value || 0);
             const dailyAllowance = totalAllowance / 30;     // 每日補助
-            const perHour = dailyAllowance / 5;             // 視為 5 小時為一整日
+            const perHour = dailyAllowance / 8;             // 視為 5 小時為一整日
 
             // 按日期彙總病假/事假時數
             const dailyMap = new Map(); // date -> { sick: number, personal: number }
